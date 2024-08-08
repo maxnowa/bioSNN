@@ -51,6 +51,11 @@ Potential future work could add:
 - neuronal backpropagation
 - stochastic connections
 
+NOT FUNCTIONAL:
+
+Some features have been started but are not fully functional yet:
+- specifying arbitrary network architectures
+- changing neuron model
 
 ## License 
 
