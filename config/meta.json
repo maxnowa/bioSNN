@@ -5,8 +5,7 @@
         "Adaptive Threshold",
         "Error",
         "Hard/Soft Winner-Take-All",
-        "Exponential Rate Coding",
-        "Automated Plotting Script Generation"
+        "Exponential Rate Coding"
     ],
     "base_dir": "data/"
 
