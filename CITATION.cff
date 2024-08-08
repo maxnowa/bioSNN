@@ -1,0 +1,17 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: bioSNN
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Max
+    family-names: Nowaczyk
+    email: max.nowaczyk2014@gmail.com
+    affiliation: University of Potsdam
+repository-code: 'https://github.com/maxnowa/bioSNN'
+license: MIT
+version: '1.03'

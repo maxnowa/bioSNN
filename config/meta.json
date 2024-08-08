@@ -1,0 +1,13 @@
+{
+    "model": "bioSNN", 
+    "version": "1.03",
+    "features": [
+        "Adaptive Threshold",
+        "Error",
+        "Hard/Soft Winner-Take-All",
+        "Exponential Rate Coding",
+        "Automated Plotting Script Generation"
+    ],
+    "base_dir": "data/"
+
+}
