@@ -23,7 +23,7 @@ and run
 ```zsh
 python3 src/main.py
 ```
-Parameters for each run can be modified in the respective dictionary. Running the file without changing parameters utilises the default parameters and optimal parameter setting specified in the thesis.
+Parameters settings can be modified by changing values inside a dictionary in the main.py file. Running the file without changing parameters utilises the default parameters and optimal parameter setting specified in the thesis.
 
 Results of the training will be displayed and subsequently saved to an experiment folder in the data folder. The naming scheme of the folders features key parameter settings from that run, model name, version, as well as a unique ID to allow for multiple experiments with the same parameter configuration to be saved. The experiment folder contains four subfolders and one .py file (as of version 1.03): 
 - parameters: contains json files with all parameter settings
