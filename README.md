@@ -41,7 +41,7 @@ The current version of bioSNN features the following mechanisms:
 - adaptive threshold after Diehl & Cook (2015)
 - hard/soft Winner-Takes-All
 - "error" mechanism
-- neuronal coding mechanism: exact time rate coding, linear random time rate coding, exponential random time rate coding
+- neuronal coding mechanism: exact time rate coding (constant coding), linear random time rate coding (Poisson coding), exponential random time rate coding
 
 Potential future work could add:
 
