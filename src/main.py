@@ -41,10 +41,10 @@ flattened_test = x_test.reshape((x_test.shape[0], -1))
 ### ------------- SPECIFY PARAMETERS ---------------
 train = True
 inference = True
-data_set_size = 5000
+data_set_size = 60000
 trial_data = flattened_data[:data_set_size, :]
 
-stdp_paras = {"wmax": 4, "gamma": 20, "A_plus": 0.004, "ratio": 1.05}
+stdp_paras = {"wmax": 4, "gamma": 20, "A_plus": 0.012, "ratio": 1.06}
 network_paras = {
     "architecture": (784, 16),
     "connection_type": "FC",
@@ -61,7 +61,7 @@ neuron_paras = {
 training_paras = {
     "coding": "Constant",
     "coding_type": "linear",
-    "t_present": 10,
+    "t_present": 12,
     "t_rest": 0,
     "max_rate": 800,
     "batch_size": 500,
