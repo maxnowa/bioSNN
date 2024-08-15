@@ -14,7 +14,7 @@ pip install requirements.txt
 ```
 
 ## Usage 
-
+### Training and Inference
 The current implementation does not feature a GUI or CLI. To run an experiment change directories into the main folder 
 ```zsh
 cd path/to/folder
@@ -32,7 +32,16 @@ Results of the training will be displayed and subsequently saved to an experimen
 - weights: contains final weights and weight change file
 - plot_weight_changes.py: script to generate interactive graphics showing the weight change during training, as heatmap and weight reconstruction
 
-To view the weight change over the training time, execute the script plot_weight_changes.py in the experiment folder. A slider allows to scroll forward and backward through the training course. 
+### Training visualization
+To view the weight change over the training time, execute the script plot_weight_changes.py in the experiment folder. Change directory into the desired data folder
+```zsh
+cd data/bioSNN-v1.03_MNIST60000_EXAMPLE
+```
+and execute the script
+```zsh
+python3 plot_weight_changes.py
+```
+A slider allows to scroll forward and backward through the training course. 
 
 ## Features 
 
