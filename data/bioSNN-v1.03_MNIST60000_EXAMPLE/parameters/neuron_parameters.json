@@ -1,0 +1,7 @@
+{
+    "neuron_type": "LIF",
+    "spike_min": 1,
+    "spike_max": 1,
+    "adaptive_th": false,
+    "error": false
+}

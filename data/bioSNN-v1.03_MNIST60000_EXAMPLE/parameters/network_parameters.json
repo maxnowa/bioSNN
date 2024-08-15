@@ -1,0 +1,9 @@
+{
+    "architecture": [
+        784,
+        16
+    ],
+    "connection_type": "FC",
+    "seed": false,
+    "init_mode": "uniform"
+}

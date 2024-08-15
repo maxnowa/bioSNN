@@ -1,0 +1,11 @@
+{
+    "coding": "Constant",
+    "coding_type": "linear",
+    "t_present": 12,
+    "t_rest": 0,
+    "max_rate": 700,
+    "batch_size": 500,
+    "EX_ONLY": false,
+    "WTA": "Hard",
+    "verbose": true
+}
