@@ -40,7 +40,7 @@ def generate_poisson_events(time, events):
     return spike_train
 
 
-def rate_coding_poisson(
+def random_time_coding(
     dataset, duration=100, max_rate=200, rest=None, coding_type="linear"
 ):
     num_samples, num_pixels = dataset.shape
@@ -79,7 +79,7 @@ def rate_coding_poisson(
     return spike_trains
 
 
-def rate_coding_constant(dataset, duration=100, rest=None):
+def exact_time_coding(dataset, duration=100, rest=None):
     """
     Generates spike trains where the ISI is determined by 1/normalized pixel value.
 

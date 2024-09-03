@@ -2,7 +2,7 @@
 import numpy as np
 from network.utils import create_batches
 from network.logger import configure_logger, log_time
-from network.neuronal_coding import rate_coding_poisson, generate_inhibitory, rate_coding_constant
+from network.neuronal_coding import exact_time_coding, generate_inhibitory, random_time_coding
 import time
 
 
@@ -44,7 +44,7 @@ def train_network(
         postsynaptic_rate = np.ones(network.weights.shape[1])
 
         if coding == "Poisson":
-            spike_train = rate_coding_poisson(
+            spike_train = random_time_coding(
                 batch,
                 duration=t_present,
                 max_rate=max_rate,
@@ -52,7 +52,7 @@ def train_network(
                 coding_type=coding_type,
             )
         elif coding == "Constant":
-            spike_train = rate_coding_constant(batch, duration=t_present, rest=t_rest)
+            spike_train = exact_time_coding(batch, duration=t_present, rest=t_rest)
         if not EX_ONLY:
             inhib_spikes = generate_inhibitory(10, n_inhib, spike_train.shape[1])
         logger.info(f"Batch {ind + 1}/{len(batches)}")
