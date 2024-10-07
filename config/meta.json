@@ -1,11 +1,12 @@
 {
     "model": "bioSNN", 
-    "version": "1.03",
+    "version": "1.04",
     "features": [
         "Adaptive Threshold",
         "Error",
         "Hard/Soft Winner-Take-All",
-        "Exponential Rate Coding"
+        "Exponential Rate Coding",
+        "Connection types: Fully, sparse, random"
     ],
     "base_dir": "data/"
 

@@ -87,15 +87,15 @@ def train_network(
                 )
                 LTP[:, index] += d_ltp
 
-                if fired_neuron_index is None or index == fired_neuron_index:
-                    network.weights[:, index] += (
-                        LTD[index] * spike_train[:, timestep]
-                    ) * network.wmax
-                    network.weights[:, index] = np.clip(
-                        network.weights[:, index],
-                        a_min=network.wmin,
-                        a_max=network.wmax,
-                    )
+                #if fired_neuron_index is None or index == fired_neuron_index:
+                network.weights[:, index] += (
+                    LTD[index] * spike_train[:, timestep]
+                ) * network.wmax
+                network.weights[:, index] = np.clip(
+                    network.weights[:, index],
+                    a_min=network.wmin,
+                    a_max=network.wmax,
+                )
 
                 if EX_ONLY:
                     I_neg = 0

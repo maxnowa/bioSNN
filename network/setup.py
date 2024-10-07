@@ -10,15 +10,18 @@ logger = configure_logger()
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 
-def initialize_weights(pre, post, wmin, wmax, seed=False, init_mode="uniform"):
+def initialize_weights(connection_matrix, wmin, wmax, seed=False, init_mode="uniform"):
     logger.info("Initializing weights")
     if seed:
         np.random.seed(0)
+    pre, post = connection_matrix.shape
     if init_mode == "uniform":
         weights = np.random.uniform(wmin, wmax, size=(pre, post))
     elif init_mode == "normal":
-        centre = (wmax-wmin)/2
+        centre = (wmax - wmin) / 2
         weights = np.random.normal(loc=centre, scale=centre, size=(pre, post))
+    # Zero out weights where there is no connection
+    weights *= connection_matrix
     return weights
 
 
@@ -52,16 +55,26 @@ def initialize_neurons(neuron_instances, neuron_type, spike_min, spike_max, adap
 def initialize_connections(architecture, con_type):
     logger.info("Initializing connections")
     layers = len(architecture)
-    input_layer = architecture[0]
-    output_layer = architecture[-1]
+    input_layer_size = architecture[0]
+    output_layer_size = architecture[-1]
+
     if con_type in ["Fully connected", "FC"]:
-        pass
+        # All connections exist
+        connection_matrix = np.ones((input_layer_size, output_layer_size))
     elif con_type in ["Sparse", "SP"]:
-        pass
+        # Generate a sparse connection matrix
+        sparsity = 0.2  # Adjust the sparsity level as needed
+        connection_matrix = np.random.rand(input_layer_size, output_layer_size) < sparsity
+        connection_matrix = connection_matrix.astype(int)
     elif con_type in ["Randomly connected", "RC"]:
-        pass
-    # TODO add functionality for adding more layers here
-    return input_layer, output_layer
+        # Random connections with certain probability
+        connection_probability = 0.5  # Adjust the connection probability as needed
+        connection_matrix = np.random.rand(input_layer_size, output_layer_size) < connection_probability
+        connection_matrix = connection_matrix.astype(int)
+    else:
+        raise ValueError(f"Unknown connection type: {con_type}")
+
+    return connection_matrix
 
 
 def initialize_network(
@@ -70,17 +83,19 @@ def initialize_network(
     architecture=(784, 16),
     connection_type="FC",
     seed=True,
-    init_mode = "uniform"
+    init_mode="uniform"
 ):
     network = Network(**stdp_paras)
-    # only important for making connections random or sparse
-    input_layer, output_layer = initialize_connections(architecture, connection_type)
+    # Get the connection matrix
+    connection_matrix = initialize_connections(architecture, connection_type)
 
     network.weights = initialize_weights(
-        input_layer, output_layer, network.wmin, network.wmax, seed=seed, init_mode=init_mode
+        connection_matrix, network.wmin, network.wmax, seed=seed, init_mode=init_mode
     )
+    # For now, we will only initialize the output neurons
+    output_layer_size = architecture[-1]
     network.neurons = initialize_neurons(
-        [output_layer], **neuron_paras
+        [output_layer_size], **neuron_paras
     )
     logger.info(
         "Network initialized with configuration:"
