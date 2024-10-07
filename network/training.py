@@ -7,7 +7,7 @@ import time
 
 
 logger = configure_logger()
-
+# reward stdp not functional!
 def train_network(
     network,
     data,
@@ -20,6 +20,7 @@ def train_network(
     WTA="Hard",
     EX_ONLY=False,
     verbose=False,
+    reward=True
 ):
 
     n_inhib = 128
@@ -29,6 +30,13 @@ def train_network(
     LTP = np.zeros(network.weights.shape)
     LTD = np.zeros(network.weights.shape[1])
     I = np.zeros(network.weights.shape[1])
+
+
+    ## setup parameters for reward modulated STDP
+    # initialize the eligibility traces for each synapse
+    tau_da = 200
+    elig_trace = np.zeros(network.weights.shape)
+    dopamine = 0.01
 
     average_weight = []
     total_rates = []

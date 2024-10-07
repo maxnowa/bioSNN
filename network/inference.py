@@ -2,8 +2,8 @@
 import numpy as np
 from network.logger import configure_logger
 from network.neuronal_coding import (
-    rate_coding_constant,
-    rate_coding_poisson,
+    random_time_coding,
+    exact_time_coding,
     generate_inhibitory,
 )
 import matplotlib.pyplot as plt
@@ -37,11 +37,11 @@ def run_inference(
     I = np.zeros(network.weights.shape[1])
     n_inhib = 128
     if coding == "Constant":
-        spike_train = rate_coding_constant(
+        spike_train = exact_time_coding(
             dataset=data, duration=t_present, rest=t_rest
         )
     elif coding == "Poisson":
-        spike_train = rate_coding_poisson(
+        spike_train = random_time_coding(
             dataset=data,
             duration=t_present,
             rest=t_rest,
@@ -97,11 +97,11 @@ def predict_labels(
     I = np.zeros(network.weights.shape[1])
     n_inhib = 128
     if coding == "Constant":
-        spike_train = rate_coding_constant(
+        spike_train = exact_time_coding(
             dataset=data, duration=t_present, rest=t_rest
         )
     elif coding == "Poisson":
-        spike_train = rate_coding_poisson(
+        spike_train = random_time_coding(
             dataset=data,
             duration=t_present,
             rest=t_rest,

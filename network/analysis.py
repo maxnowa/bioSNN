@@ -90,21 +90,21 @@ def plot_weight_distribution(weights_array, path, label_size=18):
     # Plot and save with zeros excluded for all neurons
     plot_and_save(weights_array, "no_zeros", exclude_zeros=True)
 
-    # Plot and save with zeros included for first four neurons
-    first_four_weights_array = weights_array[:, :4]  # Select only the first 4 neurons
-    plot_and_save(
-        first_four_weights_array,
-        "first_four_with_zeros",
-        exclude_zeros=False,
-        layout=(2, 2),
-    )
-    # Plot and save with zeros excluded for first four neurons
-    plot_and_save(
-        first_four_weights_array,
-        "first_four_no_zeros",
-        exclude_zeros=True,
-        layout=(2, 2),
-    )
+    # # Plot and save with zeros included for first four neurons
+    # first_four_weights_array = weights_array[:, :4]  # Select only the first 4 neurons
+    # plot_and_save(
+    #     first_four_weights_array,
+    #     "first_four_with_zeros",
+    #     exclude_zeros=False,
+    #     layout=(2, 2),
+    # )
+    # # Plot and save with zeros excluded for first four neurons
+    # plot_and_save(
+    #     first_four_weights_array,
+    #     "first_four_no_zeros",
+    #     exclude_zeros=True,
+    #     layout=(2, 2),
+    # )
 
 
 def plot_training_metrics(average_weight, total_rates, path, label_size=16):

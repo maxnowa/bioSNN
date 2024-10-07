@@ -41,7 +41,7 @@ flattened_test = x_test.reshape((x_test.shape[0], -1))
 ### ------------- SPECIFY PARAMETERS ---------------
 train = True
 inference = True
-data_set_size = 60000
+data_set_size = 30000
 trial_data = flattened_data[:data_set_size, :]
 
 stdp_paras = {"wmax": 4, "gamma": 20, "A_plus": 0.012, "ratio": 1.06}
