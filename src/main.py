@@ -40,13 +40,13 @@ flattened_test = x_test.reshape((x_test.shape[0], -1))
 
 ### ------------- SPECIFY PARAMETERS ---------------
 train = True
-inference = False
-data_set_size = 40000
+inference = True
+data_set_size = 60000
 trial_data = flattened_data[:data_set_size, :]
 
 stdp_paras = {"wmax": 4, "gamma": 20, "A_plus": 0.012, "ratio": 1.06}
 network_paras = {
-    "architecture": (784, 16),
+    "architecture": (784, 20),
     "connection_type": "FC",
     "seed": False,
     "init_mode": "uniform",
@@ -55,19 +55,20 @@ neuron_paras = {
     "neuron_type": "LIF",
     "spike_min": 1,
     "spike_max": 1,
-    "adaptive_th": False,
+    "adaptive_th": True,
     "error": False,
 }
 training_paras = {
     "coding": "Constant",
     "coding_type": "linear",
-    "t_present": 20,
+    "t_present": 12,
     "t_rest": 0,
     "max_rate": 800,
     "batch_size": 500,
     "EX_ONLY": True,
     "WTA": "Hard",
     "verbose": True,
+    "epochs": 1
 }
 
 ### ------------- SETUP NETWORK ------------------
@@ -110,6 +111,20 @@ if train:
 
 ### ---------------- RUN INFERENCE ------------------
 if inference:
+    assignment_paras = {
+        "coding": "Constant",
+        "coding_type": "exponential",
+        "t_present": 250,
+        "t_rest": 80,
+        "max_rate": 700,
+        "EX_ONLY": True,
+    }
+    # change data here to control for selectivity measurement on test or train data
+    spikes, selectivity = run_inference(
+        network, flattened_test, labels=y_test, **assignment_paras
+    )
+    plot_selectivity(spike_counts=spikes, path=plot_path)
+
     inference_paras = {
         "coding": "Constant",
         "coding_type": "exponential",
@@ -118,10 +133,6 @@ if inference:
         "max_rate": 700,
         "EX_ONLY": True,
     }
-    spikes, selectivity = run_inference(
-        network, flattened_test, labels=y_test, **inference_paras
-    )
-    plot_selectivity(spike_counts=spikes, path=plot_path)
     # Test the accuracy and  plot confusion matrix
     y_pred = predict_labels(network, flattened_test, selectivity, **inference_paras)
     eval_scores = evaluate_model(y_test, y_pred, path=plot_path)

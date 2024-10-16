@@ -27,7 +27,7 @@ class LIFNeuron():
             # TODO find good value for this 
             self.theta_th = 0
             # time constant for decay of adaptive threshold
-            self.theta_tau = 50
+            self.theta_tau = 10
         # just for experimentation, saves the threshold at which the neuron fires
         self.sp_thresh = []
 
