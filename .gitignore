@@ -3,3 +3,4 @@ plots/*
 venv
 __pycache__/
 *.pyc
+todo.md
