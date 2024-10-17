@@ -44,12 +44,12 @@ flattened_test = x_test.reshape((x_test.shape[0], -1))
 ### ------------- SPECIFY PARAMETERS ---------------
 train = True
 inference = True
-data_set_size = 50000
+data_set_size = 60000
 trial_data = flattened_data[:data_set_size, :]
 
 stdp_paras = {"wmax": 4, "gamma": 20, "A_plus": 0.012, "ratio": 1.06}
 network_paras = {
-    "architecture": (784, 28),
+    "architecture": (784, 40),
     "connection_type": "FC",
     "seed": False,
     "init_mode": "uniform",
@@ -71,7 +71,7 @@ training_paras = {
     "EX_ONLY": True,
     "WTA": "Hard",
     "verbose": True,
-    "epochs": 2
+    "epochs": 3
 }
 
 ### ------------- SETUP NETWORK ------------------
@@ -117,11 +117,11 @@ if inference:
     assignment_paras = {
         "coding": "Poisson",
         "coding_type": "linear",
-        "t_present": 300,
+        "t_present": 350,
         "t_rest": 80,
         "max_rate": 500,
         "EX_ONLY": True,
-        "dominance": 1.8
+        "dominance": 2.2
     }
     # change data here to control for selectivity measurement on test or train data
     spikes, selectivity = assign_classes(
