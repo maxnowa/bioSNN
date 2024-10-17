@@ -21,13 +21,16 @@ class LIFNeuron():
         self.error = error
         # Code for adaptive threshold
         self.ad_th = ad_th
+        # value to track adaptive threshold
         self.theta_th = 0
+        # value to be added each time neuron spikes
+        self.delta_theta = 5
+        # time constant for decay of adaptive threshold
+        self.theta_tau = 10
 
         if ad_th:
             # TODO find good value for this 
             self.theta_th = 0
-            # time constant for decay of adaptive threshold
-            self.theta_tau = 10
         # just for experimentation, saves the threshold at which the neuron fires
         self.sp_thresh = []
 
@@ -58,7 +61,7 @@ class LIFNeuron():
                 self.v = self.v_reset
                 self.tr = self.t_ref / dt
                 if self.ad_th:
-                    self.theta_th += 5
+                    self.theta_th += self.delta_theta
                 return True
         else:
             if self.v >= self.v_thresh + self.theta_th:
@@ -69,7 +72,7 @@ class LIFNeuron():
                 # set refractory period counter
                 self.tr = self.t_ref / dt
                 if self.ad_th:
-                    self.theta_th += 5
+                    self.theta_th += self.delta_theta
                 return True
         self.rec_spikes.append(0)
         return False

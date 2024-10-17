@@ -37,6 +37,7 @@ def train_network(
     logger.info("Finished setup - training started")
     starttime = time.time()
     sample_counter = 0
+    saved_weights = []
 
     # Training loop for multiple epochs
     for epoch in range(epochs):
@@ -47,7 +48,7 @@ def train_network(
 
         average_weight = []
         total_rates = []
-        saved_weights = []
+
 
         for ind, batch in enumerate(batches):
             batch_start_time = time.time()
@@ -128,9 +129,11 @@ def train_network(
 
             # Estimate and log remaining time
             batch_end_time = time.time()
-            hours, minutes, seconds = log_time(
-                starttime, batch_end_time=batch_end_time, n_batches=len(batches), ind=ind
-            )
+            elapsed_time_epoch = batch_end_time - batch_start_time
+            remaining_batches = len(batches) - (ind + 1)
+            remaining_time_epoch = elapsed_time_epoch * remaining_batches
+            hours, minutes, seconds = remaining_time_epoch // 3600, (remaining_time_epoch % 3600) // 60, remaining_time_epoch % 60
+            
             logger.info(
                 f"Estimated remaining epoch time: {int(hours)}h {int(minutes)}m {seconds:.0f}s"
             )
@@ -147,9 +150,11 @@ def train_network(
 
         # Estimate and log remaining time after each epoch
         epoch_end_time = time.time()
-        hours, minutes, seconds = log_time(
-            starttime, batch_end_time=epoch_end_time, n_batches=epochs, ind=epoch
-        )
+        elapsed_time = epoch_end_time - starttime
+        remaining_epochs = epochs - (epoch + 1)
+        estimated_total_time = (elapsed_time / (epoch + 1)) * epochs
+        remaining_time = estimated_total_time - elapsed_time
+        hours, minutes, seconds = remaining_time // 3600, (remaining_time % 3600) // 60, remaining_time % 60
         logger.info(
             "\n====================================================\n"
             f"Estimated remaining time after Epoch {epoch + 1}/{epochs}: {int(hours)}h {int(minutes)}m {seconds:.0f}s"

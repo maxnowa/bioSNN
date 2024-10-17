@@ -8,10 +8,12 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from network.setup import initialize_network
 from network.training import train_network
 from network.inference import (
-    run_inference,
+    assign_classes,
     predict_labels,
     evaluate_model,
     evaluate_rmse_and_selectivity,
+    count_unique_classes,
+    remove_unassigned_neurons
 )
 from network.analysis import (
     plot_weight_distribution,
@@ -23,6 +25,7 @@ from network.analysis import (
     plot_weight_image_change,
     exclude_first,
     exclude_highest,
+    plot_spike_counts_per_class
 )
 from network.save_network import save_network, save_scores
 from network.utils import create_experiment_folder
@@ -41,12 +44,12 @@ flattened_test = x_test.reshape((x_test.shape[0], -1))
 ### ------------- SPECIFY PARAMETERS ---------------
 train = True
 inference = True
-data_set_size = 60000
+data_set_size = 50000
 trial_data = flattened_data[:data_set_size, :]
 
 stdp_paras = {"wmax": 4, "gamma": 20, "A_plus": 0.012, "ratio": 1.06}
 network_paras = {
-    "architecture": (784, 20),
+    "architecture": (784, 28),
     "connection_type": "FC",
     "seed": False,
     "init_mode": "uniform",
@@ -68,7 +71,7 @@ training_paras = {
     "EX_ONLY": True,
     "WTA": "Hard",
     "verbose": True,
-    "epochs": 1
+    "epochs": 2
 }
 
 ### ------------- SETUP NETWORK ------------------
@@ -101,7 +104,7 @@ if train:
     plot_weight_image(weights_array=weights, path=plot_path)
     plot_weight_distribution(weights_array=weights, path=plot_path)
     plot_training_metrics(av_weights, rates, path=plot_path)
-    plot_training_metrics_per_neuron(av_weights, rates, path=plot_path)
+    #plot_training_metrics_per_neuron(av_weights, rates, path=plot_path)
 
     plot_weights_over_time(saved_weights)
     plot_weight_image_change(saved_weights)
@@ -112,18 +115,23 @@ if train:
 ### ---------------- RUN INFERENCE ------------------
 if inference:
     assignment_paras = {
-        "coding": "Constant",
-        "coding_type": "exponential",
-        "t_present": 250,
+        "coding": "Poisson",
+        "coding_type": "linear",
+        "t_present": 300,
         "t_rest": 80,
-        "max_rate": 700,
+        "max_rate": 500,
         "EX_ONLY": True,
+        "dominance": 1.8
     }
     # change data here to control for selectivity measurement on test or train data
-    spikes, selectivity = run_inference(
+    spikes, selectivity = assign_classes(
         network, flattened_test, labels=y_test, **assignment_paras
     )
     plot_selectivity(spike_counts=spikes, path=plot_path)
+    # print unique classes, remove -1 neurons and plot spike counts of cleaned network
+    count_unique_classes(selectivity)
+    selectivity = remove_unassigned_neurons(network, selectivity)
+    plot_spike_counts_per_class(spikes, selectivity)
 
     inference_paras = {
         "coding": "Constant",

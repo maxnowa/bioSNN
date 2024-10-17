@@ -20,7 +20,7 @@ from sklearn.metrics import mean_squared_error
 logger = configure_logger()
 
 
-def run_inference(
+def assign_classes(
     network,
     data,
     labels,
@@ -30,55 +30,62 @@ def run_inference(
     t_rest=0,
     max_rate=200,
     EX_ONLY=False,
+    dominance=2
 ):
     logger = configure_logger()
     logger.info("Running network in inference mode")
-    # create array to store input currents
     I = np.zeros(network.weights.shape[1])
     n_inhib = 128
-    if coding == "Constant":
-        spike_train = exact_time_coding(
-            dataset=data, duration=t_present, rest=t_rest
-        )
-    elif coding == "Poisson":
-        spike_train = random_time_coding(
-            dataset=data,
-            duration=t_present,
-            rest=t_rest,
-            max_rate=max_rate,
-            coding_type=coding_type,
-        )
+    spike_train = (
+        exact_time_coding(dataset=data, duration=t_present, rest=t_rest)
+        if coding == "Constant"
+        else random_time_coding(dataset=data, duration=t_present, rest=t_rest, max_rate=max_rate, coding_type=coding_type)
+    )
+    inhib_spikes = generate_inhibitory(10, n_inhib, spike_train.shape[1]) if not EX_ONLY else None
 
-    if not EX_ONLY:
-        inhib_spikes = generate_inhibitory(10, n_inhib, spike_train.shape[1])
+    spike_counts = np.zeros((len(network.neurons), 10))
+    digit_counts = np.bincount(labels, minlength=10)
 
-    spike_counts = np.zeros(
-        (len(network.neurons), 10)
-    )  # to store spike counts for each neuron and digit
-
-    num_samples = len(labels)
-    for sample_idx in tqdm(range(num_samples), desc="Running inference"):
-        start_time = sample_idx * (t_present + t_rest)
-        end_time = start_time + t_present
+    for sample_idx in tqdm(range(len(labels)), desc="Running inference"):
+        start_time, end_time = sample_idx * (t_present + t_rest), sample_idx * (t_present + t_rest) + t_present
         for timestep in range(start_time, end_time):
+            I_neg = 0 if EX_ONLY else inhib_spikes[:, timestep].sum()
             for index, neuron in enumerate(network.neurons):
-
                 if neuron.check_spike(network.dt):
                     spike_counts[index, labels[sample_idx]] += 1
-                if EX_ONLY:
-                    I_neg = 0
-                else:
-                    I_neg = inhib_spikes[:, timestep].sum()
-                I_pos = (
-                    np.dot(network.weights[:, index], spike_train[:, timestep].T)
-                    * neuron.spike_strength
-                )
-                I[index] = I_pos + I_neg
+                I[index] = np.dot(network.weights[:, index], spike_train[:, timestep].T) * neuron.spike_strength + I_neg
                 neuron.update_state(network.dt, I[index])
 
-    # Determine neuron selectivity based on spike counts
-    neuron_selectivity = np.argmax(spike_counts, axis=1)
+    spike_counts /= digit_counts[np.newaxis, :] + (digit_counts == 0)
+
+    # Determine neuron selectivity based on spike counts and thresholding by mean condition
+    mean_spikes = spike_counts.mean(axis=1)
+    max_spikes = np.max(spike_counts, axis=1)
+    neuron_selectivity = np.where(max_spikes > dominance * mean_spikes, np.argmax(spike_counts, axis=1), -1)
+
+    # Resolve multiple assignments of the same class to different neurons
+    for digit in range(10):
+        assigned_neurons = np.where(neuron_selectivity == digit)[0]
+        if len(assigned_neurons) > 1:
+            max_spike_neuron = assigned_neurons[np.argmax(spike_counts[assigned_neurons, digit])]
+            neuron_selectivity[assigned_neurons] = -1
+            neuron_selectivity[max_spike_neuron] = digit
+
     return spike_counts, neuron_selectivity
+
+
+def count_unique_classes(neuron_selectivity):
+    unique_classes = np.unique(neuron_selectivity)
+    unique_classes = unique_classes[unique_classes != -1]  # Exclude class -1
+    logger.info(f"Number of different classes present: {len(unique_classes)}")
+
+
+def remove_unassigned_neurons(network, neuron_selectivity):
+    assigned_indices = np.where(neuron_selectivity != -1)[0]
+    network.neurons = [network.neurons[i] for i in assigned_indices]
+    network.weights = network.weights[:, assigned_indices]
+    neuron_selectivity = neuron_selectivity[assigned_indices]
+    return neuron_selectivity
 
 
 def predict_labels(

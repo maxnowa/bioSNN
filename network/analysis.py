@@ -362,6 +362,19 @@ def exclude_highest(training_parameters, network):
             network.weights = np.delete(network.weights, exclusion, axis=1)
             logger.info(f"Removed Neuron {exclusion}")
 
+def plot_spike_counts_per_class(spike_counts, neuron_selectivity):
+    assigned_indices = np.where(neuron_selectivity != -1)[0]
+    filtered_spike_counts = spike_counts[assigned_indices]
+    total_spikes_per_class = np.sum(filtered_spike_counts, axis=0)
+    classes = np.arange(10)
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(classes, total_spikes_per_class)
+    plt.xlabel('Class Label')
+    plt.ylabel('Total Spike Count')
+    plt.title('Spike Counts per Class (After Removing Unassigned Neurons)')
+    plt.xticks(classes)
+    plt.show()
 
 if __name__ == "__main__":
 
