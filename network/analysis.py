@@ -203,59 +203,88 @@ def plot_training_metrics_per_neuron(
     plt.savefig(out_svg)
     plt.show()
 
-
-def plot_selectivity(spike_counts, path, label_size=16):
+def plot_selectivity(spike_counts, path):
     num_neurons = spike_counts.shape[0]
     num_digits = spike_counts.shape[1]
 
     # Determine the grid size (rows and columns) for the subplots
-    cols = 5  # Number of columns for the grid
+    cols = 8  # Number of columns for the grid
     rows = int(np.ceil(num_neurons / cols))  # Calculate the number of rows needed
 
-    fig, axs = plt.subplots(rows, cols, figsize=(cols * 4, rows * 3))  # Adjust the figsize accordingly
+    fig, axs = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))  # Adjust the figsize accordingly
+    axs = axs.flatten()
 
     for neuron_idx in range(num_neurons):
-        row = neuron_idx // cols
-        col = neuron_idx % cols
-
-        ax = axs[row, col]
-        ax.bar(
-            range(num_digits),
-            spike_counts[neuron_idx],
-            tick_label=list(range(num_digits)),
-        )
-        ax.set_title(f"Neuron {neuron_idx + 1}", fontsize=label_size)
-
-        # Set x and y labels only for the first column and last row
-        if col == 0:
-            ax.set_ylabel("Spike Count", fontsize=label_size)
-        if row == rows - 1:
-            ax.set_xlabel("Digit", fontsize=label_size)
+        ax = axs[neuron_idx]
+        ax.bar(range(num_digits), spike_counts[neuron_idx], tick_label=list(range(num_digits)))
+        ax.set_title(f"Neuron {neuron_idx + 1}")
 
         # Highlight the highest value
         max_idx = np.argmax(spike_counts[neuron_idx])
         max_value = spike_counts[neuron_idx, max_idx]
         ax.plot(max_idx, max_value, "ro")  # 'ro' means red circle
 
-        # Annotate the highest value
-        ax.annotate(
-            f"{max_value}",
-            xy=(max_idx, max_value),
-            xytext=(max_idx, max_value + 1),
-            arrowprops=dict(facecolor="red", shrink=0.05),
-        )
-
     # Hide any unused subplots
-    for neuron_idx in range(num_neurons, rows * cols):
-        if neuron_idx >= num_neurons:
-            fig.delaxes(axs.flatten()[neuron_idx])
+    for neuron_idx in range(num_neurons, len(axs)):
+        fig.delaxes(axs[neuron_idx])
 
     plt.subplots_adjust(wspace=0.4, hspace=0.5)
     out_png = Path(path) / "selectivity.png"
     out_svg = Path(path) / "selectivity.svg"
     plt.savefig(out_png)
     plt.savefig(out_svg)
-    plt.show()
+    plt.close()
+# def plot_selectivity(spike_counts, path, label_size=14):
+#     num_neurons = spike_counts.shape[0]
+#     num_digits = spike_counts.shape[1]
+
+#     # Determine the grid size (rows and columns) for the subplots
+#     cols = 5  # Number of columns for the grid
+#     rows = int(np.ceil(num_neurons / cols))  # Calculate the number of rows needed
+
+#     fig, axs = plt.subplots(rows, cols, figsize=(cols * 4, rows * 3))  # Adjust the figsize accordingly
+
+#     for neuron_idx in range(num_neurons):
+#         row = neuron_idx // cols
+#         col = neuron_idx % cols
+
+#         ax = axs[row, col]
+#         ax.bar(
+#             range(num_digits),
+#             spike_counts[neuron_idx],
+#             tick_label=list(range(num_digits)),
+#         )
+#         ax.set_title(f"Neuron {neuron_idx + 1}", fontsize=label_size)
+
+#         # Set x and y labels only for the first column and last row
+#         if col == 0:
+#             ax.set_ylabel("Spike Count", fontsize=label_size)
+#         if row == rows - 1:
+#             ax.set_xlabel("Digit", fontsize=label_size)
+
+#         # Highlight the highest value
+#         max_idx = np.argmax(spike_counts[neuron_idx])
+#         max_value = spike_counts[neuron_idx, max_idx]
+#         ax.plot(max_idx, max_value, "ro")  # 'ro' means red circle
+
+#         # Annotate the highest value
+#         ax.annotate(
+#             f"{max_value}",
+#             xy=(max_idx, max_value),
+#             xytext=(max_idx, max_value + 1),
+#         )
+
+#     # Hide any unused subplots
+#     for neuron_idx in range(num_neurons, rows * cols):
+#         if neuron_idx >= num_neurons:
+#             fig.delaxes(axs.flatten()[neuron_idx])
+
+#     plt.subplots_adjust(wspace=0.4, hspace=0.5)
+#     out_png = Path(path) / "selectivity.png"
+#     out_svg = Path(path) / "selectivity.svg"
+#     plt.savefig(out_png)
+#     plt.savefig(out_svg)
+#     plt.show()
 
 # visualization.py
 
@@ -344,7 +373,7 @@ def exclude_first(training_parameters, network):
         exclusion = np.argmax(average_weights)
         del network.neurons[exclusion]
         network.weights = np.delete(network.weights, exclusion, axis=1)
-        logger.info(f"Removed Neuron {exclusion}")
+        logger.info(f"Removed teacher neuron {exclusion}")
 
 
 def exclude_highest(training_parameters, network):
@@ -362,19 +391,43 @@ def exclude_highest(training_parameters, network):
             network.weights = np.delete(network.weights, exclusion, axis=1)
             logger.info(f"Removed Neuron {exclusion}")
 
-def plot_spike_counts_per_class(spike_counts, neuron_selectivity):
-    assigned_indices = np.where(neuron_selectivity != -1)[0]
-    filtered_spike_counts = spike_counts[assigned_indices]
-    total_spikes_per_class = np.sum(filtered_spike_counts, axis=0)
+def  plot_spike_counts_per_class(spike_counts, neuron_selectivity, path):
+    total_spikes_per_class = np.sum(spike_counts, axis=0)
     classes = np.arange(10)
 
+    # Plot and save spike counts per class
     plt.figure(figsize=(10, 6))
     plt.bar(classes, total_spikes_per_class)
     plt.xlabel('Class Label')
     plt.ylabel('Total Spike Count')
-    plt.title('Spike Counts per Class (After Removing Unassigned Neurons)')
+    plt.title('Spike Counts per Class')
     plt.xticks(classes)
-    plt.show()
+    plt.savefig(f"{path}/spike_counts_per_class.png")
+    plt.close()
+
+    # Plot and save the distribution of classes assigned to neurons
+    assigned_class_counts = np.bincount(neuron_selectivity, minlength=10)
+    plt.figure(figsize=(10, 6))
+    plt.plot(classes, assigned_class_counts, marker='o')
+    plt.xlabel('Class Label')
+    plt.ylabel('Number of Neurons Assigned')
+    plt.title('Distribution of Classes Assigned to Neurons')
+    plt.xticks(classes)
+    plt.grid(True)
+    plt.savefig(f"{path}/distribution_classes_assigned.png")
+    plt.close()
+
+    # Plot and save the number of spikes per class divided by the number of neurons having that class
+    average_spikes_per_neuron = total_spikes_per_class / (assigned_class_counts + (assigned_class_counts == 0))
+    plt.figure(figsize=(10, 6))
+    plt.bar(classes, average_spikes_per_neuron)
+    plt.xlabel('Class Label')
+    plt.ylabel('Average Spike Count per Neuron')
+    plt.title('Average Spike Count per Neuron for Each Class')
+    plt.xticks(classes)
+    plt.savefig(f"{path}/average_spike_count_per_neuron.png")
+    plt.close()
+
 
 if __name__ == "__main__":
 

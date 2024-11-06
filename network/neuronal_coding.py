@@ -129,3 +129,62 @@ def exact_time_coding(dataset, duration=100, rest=None):
         spike_trains[i, :] = concatenated_spike_train
 
     return spike_trains
+
+def exact_time_coding_linear(dataset, duration=100, rest=None):
+    """
+    Generates spike trains where the ISI is determined by 1/normalized pixel value.
+
+    Args:
+        dataset (numpy.ndarray): 2D array where each row is a sample and each column is a pixel.
+        duration (int): Duration of the spike train for each sample.
+        rest (int): Rest period after each spike train.
+
+    Returns:
+        numpy.ndarray: Generated spike trains.
+    """
+    num_samples, num_pixels = dataset.shape
+    rest = rest if rest is not None else 0
+    single_train_length = duration + rest
+    total_length = num_samples * single_train_length
+    spike_trains = np.zeros((num_pixels, total_length), dtype=int)
+
+    for i in range(num_pixels):
+        # Generate spike trains for each sample
+        pixel_spike_trains = np.zeros((num_samples, single_train_length), dtype=int)
+        for j in range(num_samples):
+            pixel_intensity = dataset[j, i]
+            if pixel_intensity > 0:
+                target_isi = 1.0 / pixel_intensity
+                num_spikes = int(round(pixel_intensity * duration))
+                
+                if num_spikes > 0:
+                    # Calculate approximate positions based on target ISI
+                    spike_indices = np.linspace(0, duration - 1, num=num_spikes, dtype=int)
+
+                    # Add some jitter to each spike position to make it more random while preserving average ISI
+                    jitter = np.random.randint(-target_isi * 0.1, target_isi * 0.1 + 1, size=num_spikes).astype(int)
+                    spike_indices = np.clip(spike_indices + jitter, 0, duration - 1)
+
+                    spike_train = np.zeros(duration, dtype=int)
+                    spike_train[spike_indices] = 1
+                else:
+                    spike_train = np.zeros(duration, dtype=int)
+            else:
+                spike_train = np.zeros(duration, dtype=int)  # No spikes if pixel intensity is zero
+
+            if rest > 0:
+                spike_train = np.concatenate([spike_train, np.zeros(rest, dtype=int)])
+
+            pixel_spike_trains[j, :] = spike_train
+
+        # Flatten the spike trains into a single array for this pixel
+        concatenated_spike_train = pixel_spike_trains.flatten()
+
+        if concatenated_spike_train.shape[0] != total_length:
+            print(
+                f"Error: concatenated spike train length ({concatenated_spike_train.shape[0]}) does not match total_length ({total_length}) for pixel {i}"
+            )
+
+        spike_trains[i, :] = concatenated_spike_train
+
+    return spike_trains

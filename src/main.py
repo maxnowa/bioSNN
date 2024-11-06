@@ -1,6 +1,9 @@
 # main.py
 import sys
 from pathlib import Path
+import os
+
+os.environ["NUMEXPR_MAX_THREADS"] = "10"
 
 # Add the parent directory to the Python path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -12,8 +15,7 @@ from network.inference import (
     predict_labels,
     evaluate_model,
     evaluate_rmse_and_selectivity,
-    count_unique_classes,
-    remove_unassigned_neurons
+    remove_unassigned_neurons,
 )
 from network.analysis import (
     plot_weight_distribution,
@@ -25,12 +27,13 @@ from network.analysis import (
     plot_weight_image_change,
     exclude_first,
     exclude_highest,
-    plot_spike_counts_per_class
+    plot_spike_counts_per_class,
 )
 from network.save_network import save_network, save_scores
 from network.utils import create_experiment_folder
 
 import tensorflow as tf
+import numpy as np
 
 ### --------------- LOAD DATA ---------------
 mnist = tf.keras.datasets.mnist
@@ -43,14 +46,16 @@ flattened_test = x_test.reshape((x_test.shape[0], -1))
 
 ### ------------- SPECIFY PARAMETERS ---------------
 train = True
-inference = True
-data_set_size = 60000
+inference = False
+data_set_size = 30000
 trial_data = flattened_data[:data_set_size, :]
+folder = "data/bioSNN-v1.05_MNIST60000_d5781b86_wmax-4_gamma-20_A_plus-0.012_ratio-1.06_coding-Constant_coding_type-linear_t_present-12_t_rest-0_max_rate-800_batch_size-500_EX_ONLY-True_WTA-Hard_verbose-True_epochs-5"
+weight_path = Path(folder) / "weights/weights.npy"
 
-stdp_paras = {"wmax": 4, "gamma": 20, "A_plus": 0.012, "ratio": 1.06}
+stdp_paras = {"wmax": 4, "gamma": 1, "A_plus": 0.012, "ratio": 1.06}
 network_paras = {
-    "architecture": (784, 40),
-    "connection_type": "FC",
+    "architecture": (784, 16),
+    "connection_type": "SP",
     "seed": False,
     "init_mode": "uniform",
 }
@@ -64,14 +69,14 @@ neuron_paras = {
 training_paras = {
     "coding": "Constant",
     "coding_type": "linear",
-    "t_present": 12,
+    "t_present": 50,
     "t_rest": 0,
     "max_rate": 800,
     "batch_size": 500,
     "EX_ONLY": True,
     "WTA": "Hard",
     "verbose": True,
-    "epochs": 3
+    "epochs": 1,
 }
 
 ### ------------- SETUP NETWORK ------------------
@@ -89,6 +94,8 @@ if train:
     # save stdp, network, training parameters
     data_set = "MNIST" + f"{data_set_size}"
     out_path = create_experiment_folder(data_set, **stdp_paras, **training_paras)
+    plot_path = Path(out_path) / "plots/"
+
     save_network(
         out_path,
         weights,
@@ -100,28 +107,37 @@ if train:
     )
 
     ### ------------- ANALYZE NETWORK ------------------
-    plot_path = Path(out_path) / "plots/"
     plot_weight_image(weights_array=weights, path=plot_path)
-    plot_weight_distribution(weights_array=weights, path=plot_path)
-    plot_training_metrics(av_weights, rates, path=plot_path)
-    #plot_training_metrics_per_neuron(av_weights, rates, path=plot_path)
+    if network_paras["architecture"][1] < 30:
+        plot_weight_distribution(weights_array=weights, path=plot_path)
+        plot_training_metrics(av_weights, rates, path=plot_path)
+        plot_training_metrics_per_neuron(av_weights, rates, path=plot_path)
 
-    plot_weights_over_time(saved_weights)
-    plot_weight_image_change(saved_weights)
+        plot_weights_over_time(saved_weights)
+        plot_weight_image_change(saved_weights)
 
     exclude_first(training_paras, network)
     # exclude_highest(training_paras, network)
-
+elif not train:
+    network.weights = np.load(weight_path)  # load network here
+    exclude_first(training_paras, network)
 ### ---------------- RUN INFERENCE ------------------
 if inference:
+    if not train:
+        # create rerun folder
+        plot_path = Path(folder) / "plots_rerun6/"
+        plot_path.mkdir(parents=True, exist_ok=True)
+
     assignment_paras = {
+        "num_epochs": 1,
         "coding": "Poisson",
         "coding_type": "linear",
-        "t_present": 350,
-        "t_rest": 80,
+        "t_present": 220,
+        "t_rest": 120,
         "max_rate": 500,
         "EX_ONLY": True,
-        "dominance": 2.2
+        "dominance": 2.5,
+        "WTA": "Hard",
     }
     # change data here to control for selectivity measurement on test or train data
     spikes, selectivity = assign_classes(
@@ -129,15 +145,14 @@ if inference:
     )
     plot_selectivity(spike_counts=spikes, path=plot_path)
     # print unique classes, remove -1 neurons and plot spike counts of cleaned network
-    count_unique_classes(selectivity)
-    selectivity = remove_unassigned_neurons(network, selectivity)
-    plot_spike_counts_per_class(spikes, selectivity)
+    # selectivity = remove_unassigned_neurons(network, selectivity)
+    plot_spike_counts_per_class(spikes, selectivity, path=plot_path)
 
     inference_paras = {
-        "coding": "Constant",
-        "coding_type": "exponential",
-        "t_present": 200,
-        "t_rest": 80,
+        "coding": "Poisson",
+        "coding_type": "linear",
+        "t_present": 250,
+        "t_rest": 150,
         "max_rate": 700,
         "EX_ONLY": True,
     }
@@ -148,5 +163,6 @@ if inference:
         x_test, network.weights, y_test, selectivity
     )
 
+    # save network parameters
     score_path = Path(out_path) / "results"
     save_scores(score_path, eval_scores, neuron_results)

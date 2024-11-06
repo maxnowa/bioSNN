@@ -24,7 +24,7 @@ class LIFNeuron():
         # value to track adaptive threshold
         self.theta_th = 0
         # value to be added each time neuron spikes
-        self.delta_theta = 5
+        self.delta_theta = 6
         # time constant for decay of adaptive threshold
         self.theta_tau = 10
 

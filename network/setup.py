@@ -62,10 +62,17 @@ def initialize_connections(architecture, con_type):
         # All connections exist
         connection_matrix = np.ones((input_layer_size, output_layer_size))
     elif con_type in ["Sparse", "SP"]:
-        # Generate a sparse connection matrix
-        sparsity = 0.2  # Adjust the sparsity level as needed
-        connection_matrix = np.random.rand(input_layer_size, output_layer_size) < sparsity
-        connection_matrix = connection_matrix.astype(int)
+        # Generate a sparse connection matrix with sparsity applied per postsynaptic neuron
+        sparsity = 0.4  # Adjust the sparsity level as needed
+        connection_matrix = np.zeros((input_layer_size, output_layer_size), dtype=int)
+
+        for j in range(output_layer_size):
+            # Randomly choose `sparsity * input_layer_size` connections for each postsynaptic neuron
+            num_connections = int(sparsity * input_layer_size)
+            if num_connections > 0:
+                indices = np.random.choice(input_layer_size, num_connections, replace=False)
+                connection_matrix[indices, j] = 1
+
     elif con_type in ["Randomly connected", "RC"]:
         # Random connections with certain probability
         connection_probability = 0.5  # Adjust the connection probability as needed

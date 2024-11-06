@@ -25,66 +25,102 @@ def assign_classes(
     data,
     labels,
     coding,
+    num_epochs=2,
     coding_type="linear",
     t_present=100,
     t_rest=0,
     max_rate=200,
     EX_ONLY=False,
-    dominance=2
+    dominance=2,
+    WTA=False
 ):
     logger = configure_logger()
     logger.info("Running network in inference mode")
     I = np.zeros(network.weights.shape[1])
     n_inhib = 128
-    spike_train = (
-        exact_time_coding(dataset=data, duration=t_present, rest=t_rest)
-        if coding == "Constant"
-        else random_time_coding(dataset=data, duration=t_present, rest=t_rest, max_rate=max_rate, coding_type=coding_type)
-    )
-    inhib_spikes = generate_inhibitory(10, n_inhib, spike_train.shape[1]) if not EX_ONLY else None
+
+    # parameters for calcium trace
+    calcium = np.zeros(network.weights.shape[1])
+    dC = 0.2
+    C_target = 2
+    k = 5
+    tau_C = 20
+
 
     spike_counts = np.zeros((len(network.neurons), 10))
     digit_counts = np.bincount(labels, minlength=10)
+    
+    for epoch in range(num_epochs):
+        logger.info(f"Starting epoch {epoch + 1}/{num_epochs}")
+        spike_train = (
+            exact_time_coding(dataset=data, duration=t_present, rest=t_rest)
+            if coding == "Constant"
+            else random_time_coding(dataset=data, duration=t_present, rest=t_rest, max_rate=max_rate, coding_type=coding_type)
+        )
+        inhib_spikes = generate_inhibitory(10, n_inhib, spike_train.shape[1]) if not EX_ONLY else None
 
-    for sample_idx in tqdm(range(len(labels)), desc="Running inference"):
-        start_time, end_time = sample_idx * (t_present + t_rest), sample_idx * (t_present + t_rest) + t_present
-        for timestep in range(start_time, end_time):
-            I_neg = 0 if EX_ONLY else inhib_spikes[:, timestep].sum()
-            for index, neuron in enumerate(network.neurons):
-                if neuron.check_spike(network.dt):
-                    spike_counts[index, labels[sample_idx]] += 1
-                I[index] = np.dot(network.weights[:, index], spike_train[:, timestep].T) * neuron.spike_strength + I_neg
-                neuron.update_state(network.dt, I[index])
+        for sample_idx in tqdm(range(len(labels)), desc=f"Epoch {epoch + 1}/{num_epochs} - Running inference"):
+            start_time, end_time = sample_idx * (t_present + t_rest), sample_idx * (t_present + t_rest) + t_present
+            for timestep in range(start_time, end_time):
+                I_neg = 0 if EX_ONLY else inhib_spikes[:, timestep].sum()
+                
+                fired_neuron_index = None
+                for index, neuron in enumerate(network.neurons):
+                    if neuron.check_spike(network.dt, neuron_ind=fired_neuron_index, WTA=WTA):
+                        spike_counts[index, labels[sample_idx]] += 1
+                        # get index of neuron that fired 
+                        fired_neuron_index = index
+                        # increase calcium trace and adjust membrane potential based on trace value at that timestep
+                        calcium[index] += dC
+                        neuron.v += k*(C_target - calcium[index])
+                    I[index] = np.dot(network.weights[:, index], spike_train[:, timestep].T) * neuron.spike_strength + I_neg
+                    neuron.update_state(network.dt, I[index])
 
-    spike_counts /= digit_counts[np.newaxis, :] + (digit_counts == 0)
+                    # exp decay of calcium trace
+                    calcium[index] -= calcium[index]/tau_C
+                # # apply WTA
+                # if fired_neuron_index is not None and WTA is not False:
+                #     for index, neuron in enumerate(network.neurons):
+                #         if index != fired_neuron_index:
+                #             if WTA == "Hard":
+                #                 neuron.v = neuron.v_reset
+                #             elif WTA == "Soft":
+                #                 neuron.v = max(
+                #                     neuron.v - (0.5 * (neuron.v_thresh - neuron.v_reset)),
+                #                     neuron.v_reset,
+                #                 )
 
+    spike_counts /= (digit_counts[np.newaxis, :] + (digit_counts == 0)) * num_epochs
     # Determine neuron selectivity based on spike counts and thresholding by mean condition
     mean_spikes = spike_counts.mean(axis=1)
     max_spikes = np.max(spike_counts, axis=1)
-    neuron_selectivity = np.where(max_spikes > dominance * mean_spikes, np.argmax(spike_counts, axis=1), -1)
-
-    # Resolve multiple assignments of the same class to different neurons
-    for digit in range(10):
-        assigned_neurons = np.where(neuron_selectivity == digit)[0]
-        if len(assigned_neurons) > 1:
-            max_spike_neuron = assigned_neurons[np.argmax(spike_counts[assigned_neurons, digit])]
-            neuron_selectivity[assigned_neurons] = -1
-            neuron_selectivity[max_spike_neuron] = digit
+    neuron_selectivity = np.argmax(spike_counts, axis=1)
+    # neuron_selectivity = np.where(max_spikes > dominance * mean_spikes, np.argmax(spike_counts, axis=1), -1)
+    # # Resolve multiple assignments of the same class to different neurons
+    # for digit in range(10):
+    #     assigned_neurons = np.where(neuron_selectivity == digit)[0]
+    #     if len(assigned_neurons) > 1:
+    #         max_spike_neuron = assigned_neurons[np.argmax(spike_counts[assigned_neurons, digit])]
+    #         neuron_selectivity[assigned_neurons] = -1
+    #         neuron_selectivity[max_spike_neuron] = digit
 
     return spike_counts, neuron_selectivity
 
 
-def count_unique_classes(neuron_selectivity):
-    unique_classes = np.unique(neuron_selectivity)
-    unique_classes = unique_classes[unique_classes != -1]  # Exclude class -1
-    logger.info(f"Number of different classes present: {len(unique_classes)}")
-
 
 def remove_unassigned_neurons(network, neuron_selectivity):
+    # count unique classes before pruning
+    unique_classes = np.unique(neuron_selectivity)
+    unique_classes = unique_classes[unique_classes != -1]  # Exclude class -1
+    logger.info(f"Number of different classes before pruning: {len(unique_classes)}")
+    # remove -1 and duplicate classes
     assigned_indices = np.where(neuron_selectivity != -1)[0]
     network.neurons = [network.neurons[i] for i in assigned_indices]
     network.weights = network.weights[:, assigned_indices]
     neuron_selectivity = neuron_selectivity[assigned_indices]
+    # count unique classes after pruning
+    after_prune = np.unique(neuron_selectivity)
+    logger.info(f"Output layer pruned. Remaining unique classes: {len(after_prune)}")
     return neuron_selectivity
 
 
@@ -98,11 +134,20 @@ def predict_labels(
     t_rest=0,
     max_rate=200,
     EX_ONLY=False,
+    WTA=False
 ):
     num_samples = len(data)
     predicted_labels = np.zeros(num_samples)
     I = np.zeros(network.weights.shape[1])
     n_inhib = 128
+
+    # parameters for calcium trace
+    calcium = np.zeros(network.weights.shape[1])
+    dC = 0.2
+    C_target = 2
+    k = 5
+    tau_C = 80
+
     if coding == "Constant":
         spike_train = exact_time_coding(
             dataset=data, duration=t_present, rest=t_rest
@@ -124,9 +169,13 @@ def predict_labels(
         end_time = start_time + t_present
         response_rates = np.zeros(len(network.neurons))
         for timestep in range(start_time, end_time):
+            fired_neuron_index = None
             for index, neuron in enumerate(network.neurons):
-                if neuron.check_spike(network.dt):
+                if neuron.check_spike(network.dt, neuron_ind=fired_neuron_index, WTA=WTA):
                     response_rates[index] += 1
+                    fired_neuron_index = index
+                    calcium[index] += dC
+                    neuron.v += k*(C_target - calcium[index])
                 if EX_ONLY:
                     I_neg = 0
                 else:
@@ -137,14 +186,25 @@ def predict_labels(
                 )
                 I[index] = I_pos + I_neg
                 neuron.update_state(network.dt, I[index])
+                calcium[index] -= calcium[index]/tau_C
+
+            # apply WTA
+            if fired_neuron_index is not None and WTA is not False:
+                for index, neuron in enumerate(network.neurons):
+                    if index != fired_neuron_index:
+                        if WTA == "Hard":
+                            neuron.v = neuron.v_reset
+                        elif WTA == "Soft":
+                            neuron.v = max(
+                                neuron.v - (0.5 * (neuron.v_thresh - neuron.v_reset)),
+                                neuron.v_reset,
+                            )
         highest_response_neuron = np.argmax(response_rates)
         predicted_labels[sample_idx] = neuron_selectivity[highest_response_neuron]
     return predicted_labels
 
 
 ### Modified `evaluate_model` Function
-
-
 def evaluate_model(true_labels, predicted_labels, path):
     precision, recall, f1, _ = precision_recall_fscore_support(
         true_labels, predicted_labels, average="weighted", zero_division=np.nan
@@ -155,15 +215,18 @@ def evaluate_model(true_labels, predicted_labels, path):
     print(f"Precision: {precision:.2f}")
     print(f"Recall: {recall:.2f}")
     print(f"F1 Score: {f1:.2f}")
+    
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot(cmap=plt.cm.Blues)
     plt.title("Confusion Matrix")
+    
     out_path = Path(path) / "confusion_matrix.png"
     plt.savefig(out_path)
     out_svg = Path(path) / "confusion_matrix.svg"
     plt.savefig(out_svg)
-    plt.show()
+    plt.close()  # Close the plot to prevent it from displaying
     return results_dict
+
 
 
 def average_images_per_digit(test_images, test_labels):

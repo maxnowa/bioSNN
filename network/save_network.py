@@ -23,6 +23,10 @@ def save_network(path, weights, neuron, network, stdp, training, weight_change):
             json.dump(stdp, json_file, indent=4)
         with open(para_path / "training_parameters.json", "w") as json_file:
             json.dump(training, json_file, indent=4)
+        # with open(para_path / "assignment_parameters.json", "w") as json_file:
+        #     json.dump(assignment, json_file, indent=4)
+        # with open(para_path / "inference_parameters.json", "w") as json_file:
+        #     json.dump(inference, json_file, indent=4)
         logger.info(" > Parameters saved")
 
         #save weights

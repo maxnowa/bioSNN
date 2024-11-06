@@ -1,7 +1,7 @@
 # Project Overview 
 
 ## bioSNN
-This computational tool is part of the bachelor thesis "Exploration of Dynamics and Application of Spike-Timing-Dependent Plasticity". The purpose of bioSNN is to perform digit recognition on the MNIST dataset using biologically plausible learning mechanisms, mainly STDP, but also together with other mechanisms such as winner-takes-all, adaptive thresholding, stochasticity, and more (to be added). bioSNN should perform training, testing, and evaluating of various network configurations automatically and efficiently, while retaining high customizability. 
+This computational tool is part of the bachelor thesis "Exploration of Dynamics and Application of Spike-Timing-Dependent Plasticity". The purpose of this biologically inspired spiking neural network (bioSNN) is to perform digit recognition on the MNIST dataset using biologically plausible learning mechanisms, mainly STDP, but also together with other mechanisms such as winner-takes-all, adaptive thresholding, stochasticity, and more (to be added). bioSNN should perform training, testing, and evaluating of various network configurations automatically and efficiently, while retaining high customizability. 
 
 The results of the thesis demonstrate that the model, through STDP, can learn stable and differentiated representations of input data. The spike encoding mechanism plays a key role in this process. These findings together with the tool lay a foundation for further research into biologically plausible modeling of learning processes in spiking neural networks. 
 

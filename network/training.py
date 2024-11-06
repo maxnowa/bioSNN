@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from network.utils import create_batches
 from network.logger import configure_logger, log_time
-from network.neuronal_coding import exact_time_coding, generate_inhibitory, random_time_coding
+from network.neuronal_coding import exact_time_coding, generate_inhibitory, random_time_coding, exact_time_coding_linear
 import time
 
 
@@ -64,6 +64,8 @@ def train_network(
                 )
             elif coding == "Constant":
                 spike_train = exact_time_coding(batch, duration=t_present, rest=t_rest)
+            elif coding == "Constant linear":
+                spike_train = exact_time_coding_linear(batch, duration=t_present, rest=t_rest)
             if not EX_ONLY:
                 inhib_spikes = generate_inhibitory(30, n_inhib, spike_train.shape[1])
             logger.info(f"Epoch {epoch + 1}/{epochs}, Batch {ind + 1}/{len(batches)}")
@@ -135,7 +137,7 @@ def train_network(
             hours, minutes, seconds = remaining_time_epoch // 3600, (remaining_time_epoch % 3600) // 60, remaining_time_epoch % 60
             
             logger.info(
-                f"Estimated remaining epoch time: {int(hours)}h {int(minutes)}m {seconds:.0f}s"
+                f"Estimated remaining time for current epoch: {int(hours)}h {int(minutes)}m {seconds:.0f}s"
             )
 
             # calculate convergence values after each batch
