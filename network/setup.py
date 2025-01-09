@@ -7,7 +7,7 @@ from pathlib import Path
 from neurons import LIF, IZH
 
 logger = configure_logger()
-sys.path.append(str(Path(__file__).resolve().parent.parent))
+# sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 
 def initialize_weights(connection_matrix, wmin, wmax, seed=False, init_mode="uniform"):

@@ -22,20 +22,27 @@ plt.rcParams.update({"font.size": 14})
 
 # ------------- WEIGHT RECONSTRUCTION -----------------
 def plot_weight_image(weights_array, path, label_size=18):
+    """
+    Plots the weights as images in a grid layout with approximately equal columns and rows.
+
+    Parameters:
+        weights_array: A 2D numpy array of weights (pixels x neurons).
+        path: Path to save the output images.
+        label_size: Font size for the image titles.
+    """
     num_neurons = weights_array.shape[1]
     reshaped_array = weights_array.reshape(28, 28, num_neurons)
 
-    cols = 8  # Fixed number of columns
-    rows = (num_neurons // cols) + int(
-        num_neurons % cols != 0
-    )  # Calculate the number of rows
+    # Dynamically calculate the number of columns and rows for a square layout
+    cols = int(np.ceil(np.sqrt(num_neurons)))
+    rows = int(np.ceil(num_neurons / cols))
 
-    plt.figure(figsize=(cols * 2, rows * 2))  # Adjust figure size as needed
+    plt.figure(figsize=(cols * 2, rows * 2))  # Adjust figure size based on layout
 
     for i in range(num_neurons):
         plt.subplot(rows, cols, i + 1)
         plt.imshow(reshaped_array[:, :, i], cmap="gray")
-        plt.title(f"Image {i + 1}", fontsize=label_size)
+        plt.title(f"Neuron {i + 1}", fontsize=label_size)
         plt.axis("off")
     plt.tight_layout()
 
@@ -203,37 +210,102 @@ def plot_training_metrics_per_neuron(
     plt.savefig(out_svg)
     plt.show()
 
-def plot_selectivity(spike_counts, path):
-    num_neurons = spike_counts.shape[0]
-    num_digits = spike_counts.shape[1]
+# def plot_selectivity(spike_counts, path):
+#     num_neurons = spike_counts.shape[0]
+#     num_digits = spike_counts.shape[1]
 
-    # Determine the grid size (rows and columns) for the subplots
-    cols = 8  # Number of columns for the grid
-    rows = int(np.ceil(num_neurons / cols))  # Calculate the number of rows needed
+#     # Determine the grid size (rows and columns) for the subplots
+#     cols = 8  # Number of columns for the grid
+#     rows = int(np.ceil(num_neurons / cols))  # Calculate the number of rows needed
 
-    fig, axs = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))  # Adjust the figsize accordingly
-    axs = axs.flatten()
+#     fig, axs = plt.subplots(rows, cols, figsize=(cols * 3, rows * 3))  # Adjust the figsize accordingly
+#     axs = axs.flatten()
 
-    for neuron_idx in range(num_neurons):
-        ax = axs[neuron_idx]
-        ax.bar(range(num_digits), spike_counts[neuron_idx], tick_label=list(range(num_digits)))
-        ax.set_title(f"Neuron {neuron_idx + 1}")
+#     for neuron_idx in range(num_neurons):
+#         ax = axs[neuron_idx]
+#         ax.bar(range(num_digits), spike_counts[neuron_idx], tick_label=list(range(num_digits)))
+#         ax.set_title(f"Neuron {neuron_idx + 1}")
 
-        # Highlight the highest value
-        max_idx = np.argmax(spike_counts[neuron_idx])
-        max_value = spike_counts[neuron_idx, max_idx]
-        ax.plot(max_idx, max_value, "ro")  # 'ro' means red circle
+#         # Highlight the highest value
+#         max_idx = np.argmax(spike_counts[neuron_idx])
+#         max_value = spike_counts[neuron_idx, max_idx]
+#         ax.plot(max_idx, max_value, "ro")  # 'ro' means red circle
 
-    # Hide any unused subplots
-    for neuron_idx in range(num_neurons, len(axs)):
-        fig.delaxes(axs[neuron_idx])
+#     # Hide any unused subplots
+#     for neuron_idx in range(num_neurons, len(axs)):
+#         fig.delaxes(axs[neuron_idx])
 
-    plt.subplots_adjust(wspace=0.4, hspace=0.5)
-    out_png = Path(path) / "selectivity.png"
-    out_svg = Path(path) / "selectivity.svg"
+#     plt.subplots_adjust(wspace=0.4, hspace=0.5)
+#     out_png = Path(path) / "selectivity.png"
+#     plt.savefig(out_png)
+#     plt.close()
+from pathlib import Path
+import matplotlib.pyplot as plt
+import numpy as np
+
+def plot_selectivity(spike_counts, neuron_selectivity, path, num_classes=10):
+    """
+    Efficiently plots the average spike count and selectivity of neurons assigned to each class.
+
+    Args:
+        spike_counts (np.ndarray): Spike counts for each neuron (rows) and each class (columns).
+        neuron_selectivity (array-like): Assigned class or weights from the assign_classes function.
+                                         For shared methods, pass the top class indices or weights.
+        path (str): Directory path to save the plot.
+        num_classes (int): Total number of classes. Default is 10.
+    """
+    # Initialize result arrays
+    avg_spike_counts = np.zeros(num_classes)
+    avg_selectivity_differences = np.zeros(num_classes)
+
+    # Determine neuron assignments for each class
+    if len(neuron_selectivity.shape) > 1:  # Shared method
+        neuron_classes = np.argmax(neuron_selectivity, axis=1)
+    else:  # Non-shared method
+        neuron_classes = neuron_selectivity
+
+    # Compute metrics for each class in a vectorized manner
+    for cls in range(num_classes):
+        # Get indices of neurons assigned to this class
+        assigned_neurons = neuron_classes == cls
+        if np.any(assigned_neurons):  # If any neurons are assigned
+            class_spike_counts = spike_counts[assigned_neurons]
+            avg_spike_counts[cls] = np.mean(class_spike_counts[:, cls])
+            max_selectivities = np.max(class_spike_counts, axis=1)
+            mean_selectivities = np.mean(class_spike_counts, axis=1)
+            avg_selectivity_differences[cls] = np.mean(max_selectivities - mean_selectivities)
+
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(12, 8))
+
+    # Plot average spike counts
+    bar_width = 0.6
+    ax.bar(range(num_classes), avg_spike_counts, width=bar_width, color="skyblue", label="Avg Spike Count")
+
+    # Plot selectivity differences as red dots
+    ax.plot(range(num_classes), avg_selectivity_differences, 'ro-', label="Avg Selectivity Difference")
+
+    # Annotate bars with exact values
+    for i, (spike_count, selectivity_diff) in enumerate(zip(avg_spike_counts, avg_selectivity_differences)):
+        ax.text(i, spike_count + 0.5, f"{spike_count:.2f}", ha="center", va="bottom", fontsize=10, color="blue")
+        ax.text(i, selectivity_diff + 0.5, f"{selectivity_diff:.2f}", ha="center", va="bottom", fontsize=10, color="red")
+
+    # Customize the plot
+    ax.set_xlabel("Class")
+    ax.set_ylabel("Spike Count / Selectivity")
+    ax.set_title("Average Spike Count and Selectivity by Class")
+    ax.set_xticks(range(num_classes))
+    ax.set_xticklabels(range(num_classes))
+    ax.legend()
+    ax.grid(axis="y", linestyle="--", alpha=0.7)
+
+    # Save the plot
+    out_png = Path(path) / "selectivity_by_class.png"
+    plt.tight_layout()
     plt.savefig(out_png)
-    plt.savefig(out_svg)
     plt.close()
+
+
 # def plot_selectivity(spike_counts, path, label_size=14):
 #     num_neurons = spike_counts.shape[0]
 #     num_digits = spike_counts.shape[1]
@@ -380,7 +452,7 @@ def exclude_highest(training_parameters, network):
     average_weights = np.mean(network.weights, axis=0)
     if training_parameters["coding"] == "Constant":
         # Find the indices of the three highest average weights
-        exclusions = np.argsort(average_weights)[-3:]
+        exclusions = np.argsort(average_weights)[-2:]
         exclusions = sorted(
             exclusions, reverse=True
         )  # Sort in reverse order for safe deletion
@@ -391,19 +463,50 @@ def exclude_highest(training_parameters, network):
             network.weights = np.delete(network.weights, exclusion, axis=1)
             logger.info(f"Removed Neuron {exclusion}")
 
+def exclude_outliers(training_parameters, network):
+    """
+    Excludes neurons whose average weight deviates significantly from the mean.
+    
+    Parameters:
+        training_parameters (dict): Training parameters, including "coding".
+        network: The network model object, which contains neurons and weights.
+    """
+    # Compute the average weights for each neuron
+    average_weights = np.mean(network.weights, axis=0)
+    
+    # Compute the mean and standard deviation of the average weights
+    mean_weight = np.mean(average_weights)
+    std_weight = np.std(average_weights)
+    
+    # Identify neurons whose average weights deviate beyond 2 standard deviations
+    threshold = 2 * std_weight
+    outliers = np.where(np.abs(average_weights - mean_weight) > threshold)[0]
+    
+    # Sort outliers in reverse order for safe deletion
+    outliers = sorted(outliers, reverse=True)
+    
+    # Log the exclusions
+    logger.info(f"Excluding {len(outliers)} neurons: {outliers}")
+    
+    # Remove the outlier neurons and their corresponding weights
+    for exclusion in outliers:
+        del network.neurons[exclusion]
+        network.weights = np.delete(network.weights, exclusion, axis=1)
+        logger.info(f"Removed Neuron {exclusion}")
+
 def  plot_spike_counts_per_class(spike_counts, neuron_selectivity, path):
     total_spikes_per_class = np.sum(spike_counts, axis=0)
     classes = np.arange(10)
 
-    # Plot and save spike counts per class
-    plt.figure(figsize=(10, 6))
-    plt.bar(classes, total_spikes_per_class)
-    plt.xlabel('Class Label')
-    plt.ylabel('Total Spike Count')
-    plt.title('Spike Counts per Class')
-    plt.xticks(classes)
-    plt.savefig(f"{path}/spike_counts_per_class.png")
-    plt.close()
+    # # Plot and save spike counts per class
+    # plt.figure(figsize=(10, 6))
+    # plt.bar(classes, total_spikes_per_class)
+    # plt.xlabel('Class Label')
+    # plt.ylabel('Total Spike Count')
+    # plt.title('Spike Counts per Class')
+    # plt.xticks(classes)
+    # plt.savefig(f"{path}/spike_counts_per_class.png")
+    # plt.close()
 
     # Plot and save the distribution of classes assigned to neurons
     assigned_class_counts = np.bincount(neuron_selectivity, minlength=10)
@@ -429,24 +532,62 @@ def  plot_spike_counts_per_class(spike_counts, neuron_selectivity, path):
     plt.close()
 
 
+def plot_spike_count_heatmap(spike_counts, title="Neuron Spike Count Heatmap"):
+    plt.figure(figsize=(10, 8))
+    plt.imshow(spike_counts, aspect="auto", cmap="viridis")
+    plt.colorbar(label="Spike Count")
+    plt.xlabel("Class")
+    plt.ylabel("Neuron Index")
+    plt.title(title)
+    plt.show()
+
+def plot_assigned_class_distribution(neuron_selectivity, num_classes=10, title="Assigned Class Distribution", path=None):
+    """
+    Plots the distribution of assigned classes based on neuron selectivity.
+
+    Parameters:
+        neuron_selectivity (array-like): Array of class assignments (one per neuron).
+                                         For shared methods, pass the top classes or weights.
+                                         Use -1 for unassigned neurons.
+        num_classes (int): Total number of classes. Default is 10.
+        title (str, optional): Title of the plot. Default is "Assigned Class Distribution".
+
+    Returns:
+        None
+    """
+    # Handle the case where neuron_selectivity is a weight matrix (shared method)
+    if len(neuron_selectivity.shape) > 1:  # Shared method with weights
+        assigned_classes = np.argmax(neuron_selectivity, axis=1)
+    else:
+        assigned_classes = neuron_selectivity
+
+    # Exclude unassigned neurons (-1)
+    valid_assignments = assigned_classes[assigned_classes >= 0]
+
+    # Count occurrences of each class
+    unique_classes, class_counts = np.unique(valid_assignments, return_counts=True)
+
+    # Prepare a full list of class counts for all classes (including missing)
+    full_class_counts = np.zeros(num_classes, dtype=int)
+    full_class_counts[unique_classes] = class_counts
+
+    # Plot the distribution
+    plt.figure(figsize=(10, 6))
+    plt.bar(range(num_classes), full_class_counts, tick_label=range(num_classes))
+    plt.xlabel("Class")
+    plt.ylabel("Number of Neurons")
+    plt.title(title)
+    plt.grid(axis="y", linestyle="--", alpha=0.7)
+
+    # Annotate bars with counts
+    for i, count in enumerate(full_class_counts):
+        plt.text(i, count + 0.5, str(count), ha="center", va="bottom", fontsize=10)
+    plt.savefig(path / "class_distribution.png")
+    plt.close()
+    #plt.show()
+
+
 if __name__ == "__main__":
 
-    # Example data for testing
-    weights_array = np.random.rand(784, 16)  # Example weights array (28*28, 32 neurons)
-    average_weight = np.random.rand(50, 16)  # 50 batches, 32 neurons
-    total_rates = np.random.rand(50, 16)  # 50 batches, 32 neurons
-    spike_counts = np.random.randint(0, 100, (10, 10))  # 10 neurons, 10 digits
-    saved_weights = [
-        np.random.rand(32, 32) for _ in range(10)
-    ]  # 10 timesteps, 32x32 weights
+    pass
 
-    # Create a path to save the plots
-    path = "plots"
-    Path(path).mkdir(parents=True, exist_ok=True)
-
-    # Plot functions
-    plot_weight_image(weights_array, path, label_size=label_size)
-    plot_weight_distribution(weights_array, path, label_size=label_size)
-    plot_training_metrics(average_weight, total_rates, path)
-    plot_training_metrics_per_neuron(average_weight, total_rates, path)
-    plot_selectivity(spike_counts, path, label_size=label_size)

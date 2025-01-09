@@ -1,5 +1,4 @@
 import numpy as np
-import tensorflow as tf
 from network.utils import create_batches
 from network.logger import configure_logger, log_time
 from network.neuronal_coding import exact_time_coding, generate_inhibitory, random_time_coding, exact_time_coding_linear
@@ -92,15 +91,15 @@ def train_network(
                     )
                     LTP[:, index] += d_ltp
 
-                    if fired_neuron_index is None or index == fired_neuron_index:
-                        network.weights[:, index] += (
-                            LTD[index] * spike_train[:, timestep]
-                        ) * network.wmax
-                        network.weights[:, index] = np.clip(
-                            network.weights[:, index],
-                            a_min=network.wmin,
-                            a_max=network.wmax,
-                        )
+
+                    network.weights[:, index] += (
+                        LTD[index] * spike_train[:, timestep]
+                    ) * network.wmax
+                    network.weights[:, index] = np.clip(
+                        network.weights[:, index],
+                        a_min=network.wmin,
+                        a_max=network.wmax,
+                    )
 
                     if EX_ONLY:
                         I_neg = 0
