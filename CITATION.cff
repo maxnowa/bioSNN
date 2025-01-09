@@ -10,8 +10,8 @@ type: software
 authors:
   - given-names: Max
     family-names: Nowaczyk
-    email: max.nowaczyk2014@gmail.com
-    affiliation: University of Potsdam
+    email: max.nowaczyk@bccn-berlin.de
+    affiliation: Bernstein Center Computational Neuroscience Berlin
 repository-code: 'https://github.com/maxnowa/bioSNN'
 license: MIT
 version: '1.03'
