@@ -78,4 +78,4 @@ For information on how to cite this software please refer to the [citation file]
 
 For any inquiries please contact the author at:
 
-nowaczyk2@uni-potsdam.de
+max.nowaczyk@bccn-berlin.de
