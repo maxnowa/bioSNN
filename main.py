@@ -56,16 +56,17 @@ flattened_test = x_test.reshape((x_test.shape[0], -1))
 
 
 ### ------------- SPECIFY PARAMETERS ---------------
-train = False
+# if training is false weights will be loaded from the wspecified folder
+train = True
 inference = True
 data_set_size = 60000
 trial_data = flattened_data[:data_set_size, :]
-folder = "data/bioSNN-v1.06_MNIST60000_e05fa553_wmax-4_A_plus-0.012_ratio-1.07_coding-Constant_coding_type-linear_t_present-4_t_rest-0_max_rate-1000_batch_size-500_EX_ONLY-True_WTA-Hard_verbose-True_epochs-3"
+folder = "data/bioSNN-v1.06_MNIST60000_313e7fb4_wmax-4_A_plus-0.012_ratio-1.07_coding-Constant_coding_type-linear_t_present-6_t_rest-0_max_rate-1000_batch_size-500_EX_ONLY-True_WTA-Hard_verbose-True_epochs-2"
 weight_path = Path(folder) / "weights/weights.npy"
 
-stdp_paras = {"wmax": 4, "A_plus": 0.012, "ratio": 1.07}
+stdp_paras = {"wmax": 4, "A_plus": 0.012, "ratio": 1.06}
 network_paras = {
-    "architecture": (784, 150),
+    "architecture": (784, 40),
     "connection_type": "FC",
     "seed": False,
     "init_mode": "uniform",
@@ -76,13 +77,13 @@ neuron_paras = {
     "spike_max": 1,
     "adaptive_th": True,
     "error": False,
-    "gamma": 1.2,
-    "t_ref": 4,
+    "gamma": 0.15,
+    "t_ref": 3,
 }
 training_paras = {
     "coding": "Constant",
     "coding_type": "linear",
-    "t_present": 4,
+    "t_present": 12,
     "t_rest": 0,
     "max_rate": 1000,
     "batch_size": 500,
@@ -131,15 +132,15 @@ if train:
         plot_weights_over_time(saved_weights)
         plot_weight_image_change(saved_weights)
 
-    #exclude_first(training_paras, network)
+    # exclude_first(training_paras, network)
     # exclude_first(training_paras, network)
 
     exclude_highest(training_paras, network)
 elif not train:
     network.weights = np.load(weight_path)  # load network here
-    #exclude_first(training_paras, network)
-    exclude_outliers(training_paras, network)
-    #exclude_highest(training_paras, network)
+    # exclude_first(training_paras, network)
+    exclude_outliers(network)
+    # exclude_highest(training_paras, network)
 ### ---------------- RUN INFERENCE ------------------
 if inference:
     if not train:
@@ -149,9 +150,9 @@ if inference:
 
     assignment_paras = {
         "num_epochs": 1,
-        "coding": "Constant",
+        "coding": "Poisson",
         "coding_type": "linear",
-        "t_present": 30,
+        "t_present": 100,
         "t_rest": 0,
         "max_rate": 600,
         "EX_ONLY": True,
@@ -161,9 +162,9 @@ if inference:
         "batch_size": 100,
     }
     prediction_paras = {
-        "coding": "Constant",
+        "coding": "Poisson",
         "coding_type": "linear",
-        "t_present": 30,
+        "t_present": 100,
         "t_rest": 0,
         "max_rate": 600,
         "EX_ONLY": True,
@@ -171,10 +172,10 @@ if inference:
         "method": "shared",
     }
 
-    ## change the refractory period so that each neuron only fires once per sample
-    for neuron in network.neurons:
-        neuron.t_ref = 1
-    
+    # ## change the refractory period so that each neuron only fires once per sample
+    # for neuron in network.neurons:
+    #     neuron.t_ref = 1
+
     spikes, selectivity, y_pred = assign_and_predict(
         network,
         assign_data=flattened_test,

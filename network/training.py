@@ -20,18 +20,13 @@ def train_network(
     WTA="Hard",
     EX_ONLY=False,
     verbose=False,
-    reward=True,
+    reward=False,
     epochs=1
 ):
     n_inhib = 160
     LTP = np.zeros(network.weights.shape)
     LTD = np.zeros(network.weights.shape[1])
     I = np.zeros(network.weights.shape[1])
-
-    # setup parameters for reward modulated STDP
-    tau_da = 200
-    elig_trace = np.zeros(network.weights.shape)
-    dopamine = 0.01
 
     logger.info("Finished setup - training started")
     starttime = time.time()
@@ -80,7 +75,7 @@ def train_network(
                         network.weights[:, index] += LTP[:, index] * network.wmax
                         network.weights[:, index] = np.clip(
                             network.weights[:, index],
-                            a_min=network.wmin,
+                            a_min=-network.wmax,
                             a_max=network.wmax,
                         )
 

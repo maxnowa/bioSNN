@@ -463,7 +463,7 @@ def exclude_highest(training_parameters, network):
             network.weights = np.delete(network.weights, exclusion, axis=1)
             logger.info(f"Removed Neuron {exclusion}")
 
-def exclude_outliers(training_parameters, network):
+def exclude_outliers(network):
     """
     Excludes neurons whose average weight deviates significantly from the mean.
     

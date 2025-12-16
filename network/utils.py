@@ -34,7 +34,7 @@ def create_batches(dataset, batch_size):
     return batches
 
 
-def create_experiment_folder(dataset, inference, **kwargs):
+def create_experiment_folder(dataset, inference, experiment_name="", **kwargs):
     config_path = "config/meta.json"
     with open(config_path, "r") as config_file:
         config = json.load(config_file)
@@ -44,14 +44,18 @@ def create_experiment_folder(dataset, inference, **kwargs):
     # Base folder name with model, dataset, date, and experiment ID
     exp_id = str(uuid.uuid4())[:8]
     if inference:
-        folder_name = f"{model}-v{version}_{dataset}_{exp_id}"
+        folder_name = f"{model}-v{version}_{dataset}_{exp_id}_{experiment_name}"
     else: 
         folder_name = f"{model}-v{version}_TEST_{dataset}_{exp_id}"
     # Add varied parameters to the folder name
     if kwargs:
         param_str = "_".join(f"{key}-{value}" for key, value in kwargs.items())
         folder_name += f"_{param_str}"
-
+    # TODO make work
+    # if kwargs:
+    #     param_str = "_".join(f"output-{kwargs["architecture"]}_epochs-{kwargs["epochs"]}_WTA-{kwargs["WTA"]}")
+    #     folder_name += f"_{param_str}"
+    
     # Create the full folder path
     folder_path = os.path.join(base_dir, folder_name)
     os.makedirs(folder_path, exist_ok=True)

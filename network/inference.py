@@ -121,7 +121,7 @@ def assign_and_predict(
         WTA=assign_WTA,
         num_epochs=assign_num_epochs,
         batch_size=assign_batch_size,
-        method=assign_method,
+        method=assign_method
     )
 
     # Extract parameters for prediction
@@ -149,7 +149,9 @@ def assign_and_predict(
         EX_ONLY=predict_EX_ONLY,
         WTA=predict_WTA,
         batch_size=predict_batch_size,
-        assignment_method=assignment_method
+        assignment_method=assignment_method,
+        spike_counts=spike_counts,
+        labels=assign_labels
     )
 
     return spike_counts, neuron_selectivity, predicted_labels
@@ -268,7 +270,7 @@ def assign_classes(
     elif method == "entropy":
         from scipy.stats import entropy
 
-        spike_probabilities = spike_counts / spike_counts.sum(axis=1, keepdims=True)
+        spike_probabilities = spike_counts / spike_counts.sum(axis=1)
         neuron_entropies = entropy(spike_probabilities.T)
         specificity_threshold = 1.5
         neuron_selectivity = np.argmax(spike_counts, axis=1)
@@ -282,35 +284,9 @@ def assign_classes(
     #     normalized_spike_counts = spike_counts / spike_counts.sum(axis=1, keepdims=True)
     #     neuron_selectivity = normalized_spike_counts
     elif method == "shared":
-        # # Normalize spike counts for all neurons
-        # normalized_spike_counts = spike_counts / spike_counts.sum(axis=1, keepdims=True)
-        
-        # # Get the number of neurons assigned to each class
-        # class_counts = np.bincount(np.argmax(normalized_spike_counts, axis=1), minlength=normalized_spike_counts.shape[1])
-        
-        # # Scale the weights inversely proportional to the number of neurons in each class
-        # scaling_factors = 1 / (class_counts + 1e-6)  # Add epsilon to avoid division by zero
-        # scaled_spike_counts = normalized_spike_counts * scaling_factors[np.newaxis, :]
-        
-        # # Normalize scaled spike counts to ensure they sum to 1
-        # neuron_selectivity = scaled_spike_counts / scaled_spike_counts.sum(axis=1, keepdims=True)
+        # use L1 normalization
+        neuron_selectivity = spike_counts / spike_counts.sum(axis=1, keepdims=True)
 
-        ##### new code #####
-        # Normalize spike counts for all neurons
-        normalized_spike_counts = spike_counts / spike_counts.sum(axis=1, keepdims=True)
-
-        # Count neurons assigned to each class
-        class_counts = np.bincount(np.argmax(normalized_spike_counts, axis=1), minlength=normalized_spike_counts.shape[1])
-
-        # Prevent scaling of classes with zero neurons assigned
-        scaling_factors = np.zeros_like(class_counts, dtype=float)
-        scaling_factors[class_counts > 0] = 1 / class_counts[class_counts > 0]
-
-        # Scale spike counts inversely proportional to class counts
-        scaled_spike_counts = normalized_spike_counts * scaling_factors[np.newaxis, :]
-
-        # Normalize scaled spike counts to ensure they sum to 1 across classes
-        neuron_selectivity = scaled_spike_counts / scaled_spike_counts.sum(axis=1, keepdims=True)
 
     else:
         raise ValueError(f"Invalid method '{method}' specified.")
@@ -332,12 +308,19 @@ def predict_labels(
     EX_ONLY=False,
     WTA=False,
     batch_size=128,
+    spike_counts=0,
+    labels=None
 ):
     num_samples = len(data)
     predicted_labels = np.zeros(num_samples)
     I = np.zeros(network.weights.shape[1])
     n_inhib = 128
 
+    # create matrix of size n x 10 -> ONLY FOR MNIST APPLICABLE!
+    response_rates = np.zeros((len(network.neurons), 10))
+
+    top_n = 0
+    multiple = False
     # Create batches
     data_batches = create_batches(data, batch_size)
 
@@ -368,7 +351,6 @@ def predict_labels(
             global_sample_idx = batch_idx * batch_size + sample_idx
             start_time = sample_idx * (t_present + t_rest)
             end_time = start_time + t_present
-            response_rates = np.zeros(len(network.neurons))
 
             for timestep in range(start_time, end_time):
                 fired_neuron_index = None
@@ -376,7 +358,7 @@ def predict_labels(
                     if neuron.check_spike(
                         network.dt, neuron_ind=fired_neuron_index, WTA=WTA
                     ):
-                        response_rates[index] += 1
+                        response_rates[index, int(labels[global_sample_idx])] += 1
                         fired_neuron_index = index
 
                     I_neg = 0 if EX_ONLY else inhib_spikes[:, timestep].sum()
@@ -387,33 +369,42 @@ def predict_labels(
                     I[index] = I_pos + I_neg
                     neuron.update_state(network.dt, I[index])
 
-            if assignment_method in ["threshold", "wta_global", "entropy"]:
-                highest_response_neuron = np.argmax(response_rates)
-                predicted_labels[global_sample_idx] = neuron_selectivity[
-                    highest_response_neuron
-                ]
+    # TODO ONLY SHARED WORKS - fix repsonse rate matrix handling for other methods
+    if assignment_method in ["threshold", "wta_global", "entropy"]:
+        highest_response_neuron = np.argmax(response_rates)
+        predicted_labels[global_sample_idx] = neuron_selectivity[
+            highest_response_neuron
+        ]
 
-            elif assignment_method == "softmax":
-                # Compute softmax probabilities over response rates
-                neuron_probabilities = np.exp(response_rates) / np.sum(np.exp(response_rates))
-                weighted_response_rates = response_rates[:, None] * neuron_probabilities[:, None]
-                predicted_labels[global_sample_idx] = np.argmax(weighted_response_rates.sum(axis=0))
+    elif assignment_method == "softmax":
+        # Compute softmax probabilities over response rates
+        neuron_probabilities = np.exp(response_rates) / np.sum(np.exp(response_rates))
+        weighted_response_rates = response_rates[:, None] * neuron_probabilities[:, None]
+        predicted_labels[global_sample_idx] = np.argmax(weighted_response_rates.sum(axis=0))
 
-            elif assignment_method == "clustering":
-                highest_response_neuron = np.argmax(response_rates)
-                predicted_labels[global_sample_idx] = neuron_selectivity[
-                    highest_response_neuron
-                ]
+    elif assignment_method == "clustering":
+        highest_response_neuron = np.argmax(response_rates)
+        predicted_labels[global_sample_idx] = neuron_selectivity[
+            highest_response_neuron
+        ]
 
-            elif assignment_method == "shared":
+    elif assignment_method == "shared":
+        # average response per class - for analysis /further scaling
+        average_class_responses = np.average(spike_counts / spike_counts.sum(axis=0), axis=0)
+        # hadamard product between response rates and selectivity, sum along columns
+        class_response = np.sum(response_rates * neuron_selectivity, axis=0)
+        # further scale the class responses, by inverse of average response rate
 
-                class_responses = np.zeros(neuron_selectivity.shape[1])
-                for neuron_idx, class_weights in enumerate(neuron_selectivity):
-                    class_responses += response_rates[neuron_idx] * class_weights
-                predicted_labels[global_sample_idx] = np.argmax(class_responses)
+        # this returns only the highest response rate
+        predicted_labels[global_sample_idx] = np.argmax(class_response)
 
-            else:
-                raise ValueError(f"Invalid assignment method: {assignment_method}")
+        # to return the top n classes -- not finished --
+        if multiple:
+            top_values = np.partition(class_response, -top_n)[-top_n:]
+
+
+    else:
+        raise ValueError(f"Invalid assignment method: {assignment_method}")
 
     return predicted_labels
 
