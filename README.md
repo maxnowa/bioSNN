@@ -1,7 +1,7 @@
 # Project Overview 
 
 ## bioSNN
-This computational tool is part of the bachelor thesis "Exploration of Dynamics and Application of Spike-Timing-Dependent Plasticity". The purpose of this biologically inspired spiking neural network (bioSNN) is to perform digit recognition on the MNIST dataset using biologically plausible learning mechanisms, mainly STDP, but also together with other mechanisms such as winner-takes-all, adaptive thresholding, stochasticity, and more (to be added). bioSNN should perform training, testing, and evaluating of various network configurations automatically and efficiently, while retaining high customizability. 
+This computational tool is part of the bachelor thesis "Exploration of Dynamics and Application of Spike-Timing-Dependent Plasticity". The purpose of this biologically inspired spiking neural network (bioSNN) is to perform digit recognition on the MNIST dataset using biologically plausible learning mechanisms. Mechanisms investigated here are STDP, in combination with additional physiological mechanisms such as winner-takes-all, adaptive thresholding, and stochasticity. bioSNN should perform training, testing, and evaluating of various network configurations automatically and efficiently, while retaining high customizability. 
 
 The results of the thesis demonstrate that the model, through STDP, can learn stable and differentiated representations of input data. The spike encoding mechanism plays a key role in this process. These findings together with the tool lay a foundation for further research into biologically plausible modeling of learning processes in spiking neural networks. 
 
@@ -21,7 +21,7 @@ cd path/to/folder
 ```
 and run
 ```zsh
-python3 src/main.py
+python3 main.py
 ```
 Parameters settings can be modified by changing values inside a dictionary in the main.py file. Running the file without changing parameters utilises the default parameters and optimal parameter setting specified in the thesis.
 
@@ -50,7 +50,7 @@ The current version of bioSNN features the following mechanisms:
 - adaptive threshold after Diehl & Cook (2015)
 - hard/soft Winner-Takes-All
 - "error" mechanism
-- neuronal coding mechanism: exact time rate coding (constant coding), linear random time rate coding (Poisson coding), exponential random time rate coding
+- neuronal coding mechanism: deterministic rate coding (constant coding), stochastic rate coding (Poisson coding), exponential stochastic rate coding
 
 Potential future work could add:
 
